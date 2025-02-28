@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Furies of Complexity</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="noise-overlay"></div>
+    <header>
+        <div class="glitch-container">
+            <h1 class="glitch" data-text="The Furies of Complexity">The Furies of Complexity</h1>
+        </div>
+        <h2>AI, Art, Humanity</h2>
+        <h3>Joey Connolly</h3>
+    </header>
+
+    <div class="container">
+        <div class="book-fragment">
+            <div class="fragment-header">
+                <span class="fragment-id">§ 00.0.00</span>
+                <span class="status">Human Text Fragment</span>
+            </div>
+            <div id="fragment-content">
+                <p>It's likely at this point – virtually certain – that text is being produced today at a higher rate on the subject of artificial intelligence than has been produced on any other subject at any other time in history.</p>
+            </div>
+        </div>
+
+        <div class="machine-response">
+            <div class="response-header">
+                <span class="status">Machine Response</span>
+                <span class="connection-status">Connection: <span id="connection-indicator">Establishing...</span></span>
+            </div>
+            <div id="machine-content">
+                <p>Awaiting fragment analysis...</p>
+            </div>
+            <div class="machine-metadata">
+                <span>Runtime: <span id="runtime">0.00s</span></span>
+                <span>Connections made: <span id="connections">0</span></span>
+                <span>Entropy level: <span id="entropy">0.42</span></span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="generate-btn" class="glitch-btn">Generate New Fragment</button>
+            <div class="secondary-controls">
+                <button id="reset-btn">Reset Connections</button>
+                <div class="toggle-container">
+                    <label for="glitch-toggle">Glitch Effects</label>
+                    <input type="checkbox" id="glitch-toggle" checked>
+                </div>
+            </div>
+        </div>
+
+        <div class="connection-history">
+            <h3>Connection History</h3>
+            <div id="history-container">
+                <p class="empty-state">No connections established yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; Joey Connolly | Coming Soon</p>
+        <div class="footer-links">
+            <a href="#" class="footer-link">Pre-order</a>
+            <a href="#" class="footer-link">About the Author</a>
+            <a href="#" class="footer-link">Contact</a>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
