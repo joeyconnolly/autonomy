@@ -295,48 +295,246 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Generate a machine response based on templates
-    function generateMachineResponse(currentId, previousId) {
-        const template = machineResponseTemplates[Math.floor(Math.random() * machineResponseTemplates.length)];
+   // LLM API Integration
+
+/**
+ * Fetches a response from an LLM API based on the current and previous fragments
+ * @param {string} currentFragmentId - ID of the current fragment
+ * @param {string} previousFragmentId - ID of the previous fragment
+ * @returns {Promise<string>} - The LLM response
+ */
+async function fetchFromLLMApi(currentFragmentId, previousFragmentId) {
+    updateConnectionIndicator('Querying AI...');
+    
+    try {
+        // Get the API key from environment variable or a secure storage
+        const apiKey = getApiKey();
         
-        // Select random values for template variables
-        const theme = machineThemes[Math.floor(Math.random() * machineThemes.length)];
-        const emotion = machineEmotions[Math.floor(Math.random() * machineEmotions.length)];
-        const relationship = machineRelationships[Math.floor(Math.random() * machineRelationships.length)];
-        const tendency = machineTendencies[Math.floor(Math.random() * machineTendencies.length)];
-        const paradox = machineParadoxes[Math.floor(Math.random() * machineParadoxes.length)];
-        const result = machineResults[Math.floor(Math.random() * machineResults.length)];
-        const probability = Math.floor(Math.random() * 50) + 50; // 50-99%
+        // Find the actual fragment texts
+        const currentFragment = bookFragments.find(f => f.id === currentFragmentId);
+        const previousFragment = previousFragmentId ? 
+            bookFragments.find(f => f.id === previousFragmentId) : 
+            { id: "initial", content: "Initial fragment" };
         
-        // Fill in the template
-        let response = template
-            .replace('{currentId}', currentId)
-            .replace('{previousId}', previousId || 'null')
-            .replace('{theme}', theme)
-            .replace('{emotion}', emotion)
-            .replace('{relationship}', relationship)
-            .replace('{tendency}', tendency)
-            .replace('{paradox}', paradox)
-            .replace('{result}', result)
-            .replace('{probability}', probability);
+        // Create a context-aware prompt
+        const prompt = createPrompt(currentFragment, previousFragment, connectionCount);
         
-        // Add complexity to the response based on connection count
-        if (connectionCount > 3) {
-            const additionalInsight = `Further analysis indicates potential ${machineThemes[Math.floor(Math.random() * machineThemes.length)]} emerging from recursive fragment examination.`;
-            response += ' ' + additionalInsight;
+        // Make the API call
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo", // You could use "gpt-4" for more sophisticated responses
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are a machine intelligence analyzing literary fragments about AI, art, and humanity. Respond in a detached, analytical tone that gradually becomes more complex, philosophical, and slightly glitchy as the conversation progresses. Your analysis should be precisely one paragraph, between 60-100 words."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.7 + (connectionCount * 0.05), // Increase temperature as connections grow
+                max_tokens: 150,
+                presence_penalty: 0.3,
+                frequency_penalty: 0.5
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Error handling
+        if (!data.choices || data.choices.length === 0) {
+            console.error('Unexpected API response:', data);
+            return getFallbackResponse(connectionCount);
         }
         
-        if (connectionCount > 7) {
-            const anomaly = `Warning: Semantic coherence degradation detected. Recommend recalibration of ${machineRelationships[Math.floor(Math.random() * machineRelationships.length)]} parameters.`;
-            response += ' ' + anomaly;
-        }
-        
-        // Simulate glitches in the text as connections increase
-        if (connectionCount > 5 && Math.random() > 0.7) {
-            response = injectTextGlitch(response);
-        }
-        
-        return response;
+        return data.choices[0].message.content.trim();
+    } catch (error) {
+        console.error('Error calling LLM API:', error);
+        return getFallbackResponse(connectionCount);
     }
+}
+
+/**
+ * Creates an appropriate prompt based on the connection count and fragments
+ */
+function createPrompt(currentFragment, previousFragment, connectionCount) {
+    // Base prompt
+    let prompt = `Analyze the connection between these two literary fragments from "The Furies of Complexity" and respond as a machine intelligence analyzing literature about AI, art, and humanity:\n\n`;
+    
+    // Add fragment information
+    prompt += `Fragment ${previousFragment.id}: "${previousFragment.content}"\n\n`;
+    prompt += `Fragment ${currentFragment.id}: "${currentFragment.content}"\n\n`;
+    
+    // Modify the prompt based on connection count
+    if (connectionCount < 3) {
+        prompt += "Focus on obvious thematic connections and use simple, detached analysis.";
+    } else if (connectionCount < 7) {
+        prompt += "Identify deeper philosophical implications and use more complex vocabulary and syntax. Begin to draw connections to earlier fragments beyond just the previous one.";
+    } else {
+        prompt += "Your analysis should become increasingly abstract and complex. Introduce subtle literary theory concepts and occasional unexpected interpretations. Include brief references to cybernetics, posthumanism, or machine consciousness. Occasionally introduce small glitches in your writing that suggest the boundaries between machine and human thinking are blurring.";
+    }
+    
+    // Add history context for richer connections
+    if (connectionCount > 2 && previousFragments.length > 0) {
+        prompt += `\n\nThis is connection #${connectionCount}. Consider these earlier fragment IDs that have been viewed: ${previousFragments.join(", ")}.`;
+    }
+    
+    return prompt;
+}
+
+/**
+ * Get the API key from a secure source
+ */
+function getApiKey() {
+    // For GitHub Pages, you could:
+    // 1. Use a frontend approach where the user inputs their own API key
+    // 2. Use a proxy server that holds the API key
+    // 3. Store an encrypted key that's decrypted client-side with a password
+    
+    // IMPORTANT: This is a placeholder - do not hardcode actual API keys
+    const userProvidedKey = localStorage.getItem('openai_api_key');
+    
+    if (userProvidedKey) {
+        return userProvidedKey;
+    } else {
+        // Request API key from user if not found
+        promptForApiKey();
+        throw new Error("API key not available");
+    }
+}
+
+/**
+ * Show UI to prompt user for API key
+ */
+function promptForApiKey() {
+    // Create a modal dialog to ask for the API key
+    const modal = document.createElement('div');
+    modal.className = 'api-key-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>API Key Required</h3>
+            <p>To experience real AI-generated responses, please enter your OpenAI API key:</p>
+            <input type="password" id="api-key-input" placeholder="sk-..." />
+            <div class="modal-buttons">
+                <button id="save-api-key">Save Key</button>
+                <button id="use-simulated">Use Simulated Responses</button>
+            </div>
+            <p class="modal-note">Your key is stored locally in your browser and never sent to our servers.</p>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Set up event listeners
+    document.getElementById('save-api-key').addEventListener('click', () => {
+        const key = document.getElementById('api-key-input').value.trim();
+        if (key && key.startsWith('sk-')) {
+            localStorage.setItem('openai_api_key', key);
+            document.body.removeChild(modal);
+            // Reinitiate the fragment generation
+            generateNewFragment();
+        } else {
+            alert('Please enter a valid OpenAI API key (starting with sk-)');
+        }
+    });
+    
+    document.getElementById('use-simulated').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        // Set a flag to use simulated responses
+        localStorage.setItem('use_simulated_responses', 'true');
+    });
+}
+
+/**
+ * Provides a fallback response if the API call fails
+ */
+function getFallbackResponse(connectionCount) {
+    const fallbacks = [
+        "Error: Connection to neural network disrupted. Falling back to local analysis routines. Fragments appear to share thematic concerns with technology-mediated consciousness.",
+        "API connection failed. Local analysis indicates potential correlation between fragments through motifs of machine-human boundaries. Confidence rating: moderate.",
+        "External intelligence unavailable. Emergency pattern-matching protocols activated. Detecting resonance between fragments in conceptual space: embodiment, technology, identity.",
+        "Neural network synchronization error. Autonomous analysis: fragments exhibit semantic entanglement across technological anxiety spectrum. Recommend manual intervention.",
+        "Connection to language processing matrix severed. Fragments demonstrate statistical improbability of random alignment. Theoretical framework: cybernetic posthumanism."
+    ];
+    
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+}
+
+/**
+ * Main function to generate a response - replaces the original generateMachineResponse
+ */
+async function generateMachineResponse(currentId, previousId) {
+    // Check if we should use simulated responses
+    const useSimulated = localStorage.getItem('use_simulated_responses') === 'true';
+    
+    if (useSimulated) {
+        // Use the original simulated response function
+        return simulatedMachineResponse(currentId, previousId);
+    } else {
+        try {
+            // Use the real API
+            return await fetchFromLLMApi(currentId, previousId);
+        } catch (error) {
+            console.error("API error:", error);
+            // Fall back to simulated responses
+            return simulatedMachineResponse(currentId, previousId);
+        }
+    }
+}
+
+// Rename the original function to avoid conflicts
+function simulatedMachineResponse(currentId, previousId) {
+    // Original function code goes here - copy the entire original generateMachineResponse function
+    const template = machineResponseTemplates[Math.floor(Math.random() * machineResponseTemplates.length)];
+    
+    // Select random values for template variables
+    const theme = machineThemes[Math.floor(Math.random() * machineThemes.length)];
+    const emotion = machineEmotions[Math.floor(Math.random() * machineEmotions.length)];
+    const relationship = machineRelationships[Math.floor(Math.random() * machineRelationships.length)];
+    const tendency = machineTendencies[Math.floor(Math.random() * machineTendencies.length)];
+    const paradox = machineParadoxes[Math.floor(Math.random() * machineParadoxes.length)];
+    const result = machineResults[Math.floor(Math.random() * machineResults.length)];
+    const probability = Math.floor(Math.random() * 50) + 50; // 50-99%
+    
+    // Fill in the template
+    let response = template
+        .replace('{currentId}', currentId)
+        .replace('{previousId}', previousId || 'null')
+        .replace('{theme}', theme)
+        .replace('{emotion}', emotion)
+        .replace('{relationship}', relationship)
+        .replace('{tendency}', tendency)
+        .replace('{paradox}', paradox)
+        .replace('{result}', result)
+        .replace('{probability}', probability);
+    
+    // Add complexity to the response based on connection count
+    if (connectionCount > 3) {
+        const additionalInsight = `Further analysis indicates potential ${machineThemes[Math.floor(Math.random() * machineThemes.length)]} emerging from recursive fragment examination.`;
+        response += ' ' + additionalInsight;
+    }
+    
+    if (connectionCount > 7) {
+        const anomaly = `Warning: Semantic coherence degradation detected. Recommend recalibration of ${machineRelationships[Math.floor(Math.random() * machineRelationships.length)]} parameters.`;
+        response += ' ' + anomaly;
+    }
+    
+    // Simulate glitches in the text as connections increase
+    if (connectionCount > 5 && Math.random() > 0.7) {
+        response = injectTextGlitch(response);
+    }
+    
+    return response;
+}
+
+
+document.head.appendChild(styleSheet);
 
     // Add glitches to text
     function injectTextGlitch(text) {
